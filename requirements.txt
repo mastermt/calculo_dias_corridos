@@ -1,16 +1,1 @@
-anyio
-certifi
 flet
-httpx
-idna
-numpy
-oauthlib
-packaging
-repath
-rfc3986
-six
-sniffio
-typing_extensions
-watchdog
-websocket-client
-websockets

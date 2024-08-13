@@ -2,31 +2,32 @@
 # -*- coding: utf-8 -*-
 import datetime
 import calendar
+from dateutil.relativedelta import relativedelta
 from typing import List, Tuple
 
 # import pathlib
 import flet as ft
-import holidays
 
-DESKTOP = False
-DATE_FORMAT = '%d/%m/%Y'
+DESKTOP = True
+DATE_FORMAT = "%d/%m/%Y"
 WEEK_DAYS = ("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab")
 MONTHS = (
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho",
     "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 )
+
 calendar.setfirstweekday(calendar.SUNDAY)
-_HOLIDAYS = set(holidays.holidays())
 
+global dia_final
 
-def main(page: ft.Page):
+def main(page: ft.Page):    
 
     def on_keyboard(e: ft.KeyboardEvent):
         if e.key == "Escape":
             page.close()
         elif e.key in ("Enter", "Return", "Numpad Enter"):
             button_calcular_clicked(e)
-            tf_days.focus()
+            tf_months.focus()
             page.update()
 
     def get_grid_month_datatable(
@@ -78,37 +79,23 @@ def main(page: ft.Page):
             year: int = 0,
             par_month: int = 0
     ) -> ft.PopupMenuButton:
-        global _HOLIDAYS
-        color = ft.colors.RED if day_week in (0, 6) else ft.colors.BLUE
+        style = ft.TextThemeStyle.TITLE_LARGE
+        text_align = ft.TextAlign.CENTER
+        color = ft.colors.RED if day_week in (0, 6) else ft.colors.BLUE        
         day_now = f"{year}-{par_month:02}-{day_month:02}"
-        if day_now in [str(day) for day in _HOLIDAYS]:
-            color = ft.colors.RED
+        # print(f"-> {dia_final}={day_now}")
+        if day_now == dia_final:
+            color = ft.colors.GREEN
+            style = ft.TextThemeStyle.DISPLAY_MEDIUM
+            text_align = ft.TextAlign.LEFT
         pm_button = ft.PopupMenuButton(
             content=ft.Text(
                 str(day_month),
-                style=ft.TextThemeStyle.TITLE_LARGE,
+                style=style,
                 color=color,
+                text_align=text_align,
             ),
-            items=[
-                ft.PopupMenuItem(
-                    content=ft.Row(
-                        [
-                            ft.Icon(ft.icons.CALENDAR_TODAY_ROUNDED),
-                            ft.Text("Adicionar feriado"),
-                        ]
-                    ),
-                    on_click=lambda _: holidays_insert(day_now),
-                ),
-                ft.PopupMenuItem(
-                    content=ft.Row(
-                        [
-                            ft.Icon(ft.icons.HOURGLASS_TOP_OUTLINED),
-                            ft.Text("Remover feriado"),
-                        ]
-                    ),
-                    on_click=lambda _: holidays_delete(day_now),
-                ),
-            ]
+            items=[]
         )
         return pm_button
 
@@ -127,20 +114,12 @@ def main(page: ft.Page):
             expand=True,
         )
 
-        month_range_count = int((1 + (int(tf_days.value) / 27.5)) * 1.4505)
-        print(f'start day: {tf_final_date.value}')
-        print(f'count: {(1 + (int(tf_days.value) / 27.5)) * 1.4405}')
-        if sw_reverse.value:
-            month_range: Tuple = (
-                _final_date.month,
-                _final_date.month + month_range_count
-            )
-        else:
-            month_range = (
-                _final_date.month - month_range_count + 1,
-                _final_date.month + 1
-            )
-        print(f'range({month_range}), count:{month_range_count}')
+        # print(f'start day: {_final_date}')
+        month_range: Tuple = (
+            _final_date.month - 1,
+            _final_date.month + 2,
+        )
+        # print(f"meses: {month_range}")
 
         for index_month in range(*month_range):
             cal_month = index_month if index_month > 0 else 12 + index_month
@@ -187,25 +166,7 @@ def main(page: ft.Page):
         page.add(calendars)
         page.update()
 
-    def holidays_insert(day_now: str) -> None:
-        global _HOLIDAYS
-        holidays.holidays_insert(day_now)
-        _HOLIDAYS = set(holidays.holidays())
-        button_calcular_clicked(None)
-        holidays_update_calendar(
-            datetime.datetime.strptime(tf_final_date.value, DATE_FORMAT)
-        )
-
-    def holidays_delete(day_now: str) -> None:
-        global _HOLIDAYS
-        holidays.holidays_delete(day_now)
-        _HOLIDAYS = set(holidays.holidays())
-        button_calcular_clicked(None)
-        holidays_update_calendar(
-            datetime.datetime.strptime(tf_final_date.value, DATE_FORMAT)
-        )
-
-    page.title = "Calculadora de Dias Úteis"
+    page.title = "Calculadora de Meses"
     icon_image = ft.Image(
         src="/images/schedule.png",
         width=128,
@@ -214,45 +175,33 @@ def main(page: ft.Page):
     )
 
     def button_calcular_clicked(e):
+        global dia_final
+
         if e:
             pass
         
         try:
-            end_date = datetime.datetime.strptime(tf_final_date.value, "%d%m%Y")
+            end_date = datetime.datetime.strptime(tf_start_date.value, "%d%m%Y")
         except ValueError:
             try:
-                end_date = datetime.datetime.strptime(tf_final_date.value, DATE_FORMAT)
+                end_date = datetime.datetime.strptime(tf_start_date.value, DATE_FORMAT)
             except ValueError:
                 try:
-                    end_date = datetime.datetime.strptime(tf_final_date.value, "%Y-%m-%d")
+                    end_date = datetime.datetime.strptime(tf_start_date.value, "%Y-%m-%d")
                 except ValueError:
                     end_date = datetime.datetime.strptime('1900-01-01', "%Y-%m-%d")
-        tf_final_date.value = end_date.strftime(DATE_FORMAT)
+        tf_start_date.value = end_date.strftime(DATE_FORMAT)
             
-        if sw_reverse.value:
-            work_days = holidays.backward_work_days(
-                end_day=end_date,
-                days=int(tf_days.value),
-            )
-            text_result = (
-                f"{work_days.item().strftime(DATE_FORMAT)}, "
-                f"{tf_days.value} dias úteis."
-            )
-        else:
-            work_days = holidays.work_days(
-                end_day=end_date,
-                days=int(tf_days.value),
-            )
-            start_date = (
-                end_date - datetime.timedelta(days=int(tf_days.value) - 1)
-            ).strftime(DATE_FORMAT)
-            text_result = (
-                f'{work_days} dias úteis ({start_date} '
-                f'- {end_date.strftime(DATE_FORMAT)})'
-            )
+        end_date_months = end_date + relativedelta(months=int(tf_months.value))
+        dia_final = end_date_months.strftime("%Y-%m-%d")
 
+        text_result = (
+            f"Data final após {tf_months.value} meses: "
+            f"{end_date_months.strftime(DATE_FORMAT)}"
+        )
         txt_work_days_result.value = text_result
-        holidays_update_calendar(end_date)
+
+        holidays_update_calendar(end_date_months)
         page.update()
 
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -268,20 +217,21 @@ def main(page: ft.Page):
         text_align=ft.TextAlign.CENTER,
         weight=ft.FontWeight.BOLD,
     )
-    tf_final_date = ft.TextField(
-        label="Data Final",
+    
+    tf_start_date = ft.TextField(
+        label="Data Inicial de pagamento",
         icon=ft.icons.CALENDAR_MONTH,
         value=final_date.strftime(DATE_FORMAT),
-        width=180,
+        width=200,
     )
 
-    tf_days = ft.TextField(
-        label="Dias",
+    tf_months = ft.TextField(
+        label="Meses",
         icon=ft.icons.CALENDAR_TODAY,
-        value='30',
-        width=100,
+        value='1',
+        width=120,
     )
-    sw_reverse = ft.Switch(label="Dias futuros", value=True)
+
     bt_calc = ft.ElevatedButton(
         text="Calcular",
         color=ft.colors.BACKGROUND,
@@ -292,17 +242,19 @@ def main(page: ft.Page):
     main_menu_1 = ft.Row(
         [
             icon_image,
-            tf_final_date,
-            tf_days,
+            tf_start_date,
+            tf_months,
         ],
         wrap=True,
     )
+
     main_menu_2 = ft.Row(
         [
-            sw_reverse, bt_calc,
+            bt_calc,
         ],
         alignment=ft.MainAxisAlignment.CENTER,
     )
+
     main_menu_3 = ft.Row(
         [
             ft.Text(''),
@@ -327,7 +279,7 @@ def main(page: ft.Page):
     )
     
     button_calcular_clicked(None)
-    tf_days.focus()
+    tf_start_date.focus()
     page.update()
 
 
@@ -335,7 +287,7 @@ if DESKTOP:
     ft.app(target=main, assets_dir="assets",)
 else:
     ft.app(
-        target=main, port=8550,
+        target=main, port=8551,
         view=ft.WEB_BROWSER,
         assets_dir="assets",
     )
