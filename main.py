@@ -8,7 +8,7 @@ from typing import List, Tuple
 # import pathlib
 import flet as ft
 
-DESKTOP = True
+DESKTOP = False
 DATE_FORMAT = "%d/%m/%Y"
 WEEK_DAYS = ("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab")
 MONTHS = (
