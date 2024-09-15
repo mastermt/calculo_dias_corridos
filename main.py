@@ -288,6 +288,6 @@ if DESKTOP:
 else:
     ft.app(
         target=main, port=8551,
-        view=ft.WEB_BROWSER,
+        # view=ft.DESKTOP, # WEB_BROWSER,
         assets_dir="assets",
     )
